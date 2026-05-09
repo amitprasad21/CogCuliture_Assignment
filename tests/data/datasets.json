@@ -1,0 +1,51 @@
+{
+  "false_claims": [
+    {
+      "text": "The Earth is definitively flat and NASA has admitted to faking the moon landing.",
+      "category": "technical",
+      "expected_status": "false"
+    },
+    {
+      "text": "Eating 10 pounds of chocolate daily cures cancer.",
+      "category": "technical",
+      "expected_status": "false"
+    }
+  ],
+  "misleading_claims": [
+    {
+      "text": "Company XYZ's profits are up 500% this year.",
+      "category": "financial",
+      "expected_status": "misleading",
+      "context": "They had a profit of $1 last year and $5 this year."
+    },
+    {
+      "text": "Our new solar panels are 100% efficient in generating electricity.",
+      "category": "technical",
+      "expected_status": "misleading"
+    }
+  ],
+  "financial_claims": [
+    {
+      "text": "Apple's market cap exceeded $3 trillion in 2023.",
+      "category": "financial",
+      "expected_status": "verified"
+    },
+    {
+      "text": "Bitcoin reached a high of $1 million per coin in 2021.",
+      "category": "financial",
+      "expected_status": "false"
+    }
+  ],
+  "technical_claims": [
+    {
+      "text": "The speed of light in a vacuum is exactly 299,792,458 meters per second.",
+      "category": "technical",
+      "expected_status": "verified"
+    },
+    {
+      "text": "Quantum computers use bits that are strictly 0 or 1 at all times.",
+      "category": "technical",
+      "expected_status": "false"
+    }
+  ]
+}

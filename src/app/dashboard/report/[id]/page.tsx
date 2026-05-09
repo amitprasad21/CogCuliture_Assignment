@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { ShieldCheck, ShieldAlert, AlertTriangle, ExternalLink, RefreshCw, Download } from "lucide-react";
+import { ShieldCheck, ShieldAlert, AlertTriangle, ExternalLink, RefreshCw, Download, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import Link from "next/link";
 
 interface Claim {
   id: string;
@@ -25,10 +25,10 @@ export default function ReportPage() {
   const { id } = useParams();
   const [claims, setClaims] = useState<Claim[]>([]);
   const [loading, setLoading] = useState(true);
+  const reportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // In a real app, we would fetch from Supabase.
-    // For demo purposes, we will mock the claims if the backend isn't connected.
+    // Mock Data with real-like URLs for testing
     const mockClaims: Claim[] = [
       {
         id: "1",
@@ -38,19 +38,19 @@ export default function ReportPage() {
         confidence_score: 95,
         explanation: "Multiple reliable financial reports confirm this growth.",
         sources: [
-          { title: "Annual Financial Report", url: "#", snippet: "The company reported a 150% year-over-year growth..." }
+          { title: "Annual Financial Report", url: "https://example.com/finance", snippet: "The company reported a 150% year-over-year growth..." }
         ]
       },
       {
         id: "2",
-        original_text: "The new AI model uses 90% less energy than predecessors.",
+        original_text: "The new model uses 90% less energy than predecessors.",
         category: "technical",
         status: "misleading",
         confidence_score: 80,
         corrected_fact: "The new model uses 40% less energy, but up to 90% less in idle states only.",
         explanation: "The 90% figure only applies to idle states, not active processing.",
         sources: [
-          { title: "Tech Architecture Review", url: "#", snippet: "Energy consumption drops by 90% during idle, 40% active." }
+          { title: "Tech Architecture Review", url: "https://example.com/tech", snippet: "Energy consumption drops by 90% during idle, 40% active." }
         ]
       },
       {
@@ -62,7 +62,7 @@ export default function ReportPage() {
         corrected_fact: "User acquisition in January was 1.2 million.",
         explanation: "The 10 million figure represents total users, not new acquisitions for January.",
         sources: [
-          { title: "Q1 Growth metrics", url: "#", snippet: "Total users reached 10M, adding 1.2M in Jan." }
+          { title: "Q1 Growth metrics", url: "https://example.com/metrics", snippet: "Total users reached 10M, adding 1.2M in Jan." }
         ]
       }
     ];
@@ -94,8 +94,13 @@ export default function ReportPage() {
   };
 
   const handleExport = () => {
-    toast.success("Exporting report as PDF...");
-    // Future PDF export logic
+    toast.success("Preparing PDF Document...", { id: "pdf-toast" });
+    // html2canvas does not support Tailwind v4's modern oklch() color spaces.
+    // Using the native print API ensures 100% accurate, high-quality, 
+    // and selectable PDF exports in all modern browsers.
+    setTimeout(() => {
+      window.print();
+    }, 500);
   };
 
   if (loading) {
@@ -108,22 +113,41 @@ export default function ReportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white pb-20">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-white/5 bg-black/50 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="font-semibold text-lg">Verification Report</h1>
-            <Badge variant="outline" className="border-white/10 text-white/50">ID: {id}</Badge>
-          </div>
-          <Button variant="outline" size="sm" onClick={handleExport} className="border-white/10 hover:bg-white/5 text-white">
-            <Download className="w-4 h-4 mr-2" /> Export PDF
-          </Button>
+    <div className="min-h-screen bg-black text-white pb-20 font-sans">
+      {/* App Navbar */}
+      <header className="relative z-10 w-full border-b border-white/5 bg-black/60 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
+            <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/30">
+              <ShieldCheck className="w-5 h-5 text-primary" />
+            </div>
+            <span className="text-white font-medium tracking-tight text-lg">VerifyDoc</span>
+          </Link>
+          <nav className="flex items-center gap-4 sm:gap-6">
+            <Link href="/" className="text-sm font-medium text-white/60 hover:text-white transition-colors">Dashboard</Link>
+            <Link href="/dashboard/report/1" className="text-sm font-medium text-white/90 hover:text-white transition-colors">Recent History</Link>
+            <div className="w-8 h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-xs ml-2">
+              <User className="w-4 h-4 text-white/80" />
+            </div>
+          </nav>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-5xl mx-auto px-6 mt-12 space-y-8">
+      {/* Report Action Bar */}
+      <div className="sticky top-0 z-40 border-b border-white/5 bg-black/90 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <h1 className="font-semibold text-base sm:text-lg">Verification Report</h1>
+            <Badge variant="outline" className="border-white/10 text-white/50 hidden sm:inline-flex">ID: {id}</Badge>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleExport} className="border-white/10 hover:bg-white/5 text-white bg-black">
+            <Download className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Export PDF</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* Main Content to be Exported */}
+      <main ref={reportRef} className="max-w-5xl mx-auto px-4 sm:px-6 mt-8 sm:mt-12 space-y-8 bg-black">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card className="col-span-1 md:col-span-4 bg-white/5 border-white/10 p-6">
             <h2 className="text-xl font-medium mb-4 text-white">Analysis Summary</h2>
@@ -162,12 +186,12 @@ export default function ReportPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
               >
-                <Card className="bg-white/5 border-white/10 p-6 overflow-hidden relative">
+                <Card className="bg-white/5 border-white/10 p-4 sm:p-6 overflow-hidden relative">
                   <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-white/20 to-transparent" />
                   
-                  <div className="flex items-start justify-between gap-4 mb-6">
+                  <div className="flex flex-col sm:flex-row items-start justify-between gap-4 mb-6">
                     <div className="space-y-1">
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                         <Badge variant="outline" className="border-white/10 uppercase text-[10px] tracking-wider text-white/60">
                           {claim.category}
                         </Badge>
@@ -176,10 +200,10 @@ export default function ReportPage() {
                           <span className="ml-2">{claim.status}</span>
                         </Badge>
                       </div>
-                      <h4 className="text-xl font-medium text-white mt-3">"{claim.original_text}"</h4>
+                      <h4 className="text-lg sm:text-xl font-medium text-white mt-3">"{claim.original_text}"</h4>
                     </div>
                     {claim.confidence_score && (
-                      <div className="text-right">
+                      <div className="text-left sm:text-right w-full sm:w-auto mt-2 sm:mt-0">
                         <div className="text-sm text-white/50 mb-1">Confidence</div>
                         <div className="text-2xl font-semibold text-white">{claim.confidence_score}%</div>
                       </div>
@@ -212,8 +236,8 @@ export default function ReportPage() {
                               rel="noopener noreferrer"
                               className="inline-flex items-center text-xs px-3 py-1.5 rounded-md bg-white/5 hover:bg-white/10 border border-white/5 text-white/70 hover:text-white transition-colors"
                             >
-                              <ExternalLink className="w-3 h-3 mr-2" />
-                              {source.title}
+                              <ExternalLink className="w-3 h-3 mr-2 flex-shrink-0" />
+                              <span className="truncate max-w-[200px] sm:max-w-xs">{source.title}</span>
                             </a>
                           ))}
                         </div>
@@ -229,3 +253,4 @@ export default function ReportPage() {
     </div>
   );
 }
+

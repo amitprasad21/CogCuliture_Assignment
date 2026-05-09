@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
-import pdfParse from "pdf-parse";
 import { GoogleGenAI } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
 
+// Workaround for CommonJS package in Next.js ESM
+const pdfParse = require("pdf-parse");
+
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -67,7 +70,7 @@ export async function POST(req: Request) {
     const responseText = response.text || "[]";
     let claims = [];
     try {
-      const match = responseText.match(/\[.*\]/s);
+      const match = responseText.match(/\[[\s\S]*\]/);
       claims = JSON.parse(match ? match[0] : responseText);
     } catch (e) {
       console.error("Failed to parse claims JSON", e);
