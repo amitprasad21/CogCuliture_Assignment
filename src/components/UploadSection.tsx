@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Upload, FileText, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { Upload, FileText, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 export default function UploadSection() {
   const [file, setFile] = useState<File | null>(null);
@@ -27,10 +29,9 @@ export default function UploadSection() {
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const droppedFile = e.dataTransfer.files[0];
-      handleFileSelection(droppedFile);
+      handleFileSelection(e.dataTransfer.files[0]);
     }
   };
 
@@ -45,6 +46,10 @@ export default function UploadSection() {
       toast.error("Invalid file type. Please upload a PDF file.");
       return;
     }
+    if (selectedFile.size > MAX_FILE_SIZE) {
+      toast.error("File too large. Maximum size is 10MB.");
+      return;
+    }
     setFile(selectedFile);
   };
 
@@ -54,7 +59,6 @@ export default function UploadSection() {
     setIsUploading(true);
     setProgress(0);
 
-    // Simulate progress
     const interval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 90) {
@@ -74,25 +78,34 @@ export default function UploadSection() {
         body: formData,
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        throw new Error("Failed to upload file");
+        throw new Error(data.error || "Failed to upload file");
       }
 
-      const data = await res.json();
-      
+      sessionStorage.setItem(
+        `report-${data.reportId}`,
+        JSON.stringify({
+          fileName: data.fileName,
+          claims: data.claims,
+        })
+      );
+
       setProgress(100);
       clearInterval(interval);
       toast.success("File uploaded successfully! Starting analysis...");
-      
+
       setTimeout(() => {
         router.push(`/dashboard/report/${data.reportId}`);
-      }, 1000);
-
+      }, 800);
     } catch (error) {
       clearInterval(interval);
       setProgress(0);
       setIsUploading(false);
-      toast.error("Error uploading file. Please try again.");
+      const message =
+        error instanceof Error ? error.message : "Error uploading file.";
+      toast.error(message);
       console.error(error);
     }
   };
@@ -115,18 +128,19 @@ export default function UploadSection() {
         onDrop={onDrop}
       >
         <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-        
+
         <div className="relative z-10 flex flex-col items-center justify-center text-center space-y-6">
           <div className="p-4 rounded-full bg-white/5 border border-white/10">
             <Upload className="w-8 h-8 text-white/70" />
           </div>
-          
+
           <div className="space-y-2">
             <h3 className="text-2xl font-medium tracking-tight text-white">
               Upload Document for Verification
             </h3>
             <p className="text-sm text-white/50 max-w-sm mx-auto">
-              Drag and drop your PDF file here, or click to browse. We'll extract and verify factual claims automatically.
+              Drag and drop your PDF file here, or click to browse. We'll
+              extract and verify factual claims automatically.
             </p>
           </div>
 
@@ -174,8 +188,9 @@ export default function UploadSection() {
                     <button
                       onClick={() => setFile(null)}
                       className="p-2 text-white/50 hover:text-white transition-colors"
+                      aria-label="Remove file"
                     >
-                      <AlertCircle className="w-5 h-5" />
+                      <X className="w-5 h-5" />
                     </button>
                   )}
                 </div>
@@ -183,7 +198,10 @@ export default function UploadSection() {
                 {isUploading ? (
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs text-white/50">
-                      <span>Uploading & Processing</span>
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Uploading & Processing
+                      </span>
                       <span>{progress}%</span>
                     </div>
                     <Progress value={progress} className="h-1" />
@@ -192,7 +210,6 @@ export default function UploadSection() {
                   <Button
                     onClick={handleUpload}
                     className="w-full bg-white text-black hover:bg-white/90"
-                    disabled={isUploading}
                   >
                     Start Verification
                   </Button>

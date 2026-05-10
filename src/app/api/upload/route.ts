@@ -1,16 +1,9 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
-import { createClient } from "@supabase/supabase-js";
 
-// Workaround for CommonJS package in Next.js ESM
-const pdfParse = require("pdf-parse");
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+function getAI() {
+  return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+}
 
 export async function POST(req: Request) {
   try {
@@ -21,10 +14,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
+    if (file.size > 10 * 1024 * 1024) {
+      return NextResponse.json({ error: "File size exceeds 10MB limit" }, { status: 400 });
+    }
+
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // 1. Parse PDF
+    const pdfParse = (await import("pdf-parse")).default;
     const pdfData = await pdfParse(buffer);
     const text = pdfData.text;
 
@@ -32,24 +29,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Could not extract text from PDF" }, { status: 400 });
     }
 
-    // 2. Create a report in database (using a mock user_id for now or service role if we had one)
-    // In production we would use Supabase Auth to get the user ID.
-    const { data: report, error: reportError } = await supabase
-      .from("reports")
-      .insert({
-        title: file.name,
-        file_name: file.name,
-        status: "processing",
-        summary: "Extracting claims...",
-        // Temporary UUID for demo since auth isn't fully wired in UI
-        user_id: "00000000-0000-0000-0000-000000000000", 
-      })
-      .select()
-      .single();
-
-    // Since RLS is enabled, inserting without a valid auth token will fail unless we bypass RLS.
-    // For this assignment, we will process it anyway even if db fails to insert without proper auth setup.
-    // Let's actually use the Gemini API to extract claims immediately.
+    const truncatedText = text.substring(0, 5000);
 
     const prompt = `
       You are an expert fact-checker. Extract the most important factual claims from the following text.
@@ -57,11 +37,12 @@ export async function POST(req: Request) {
       Return ONLY a JSON array of objects, where each object has:
       - "original_text": The exact text of the claim
       - "category": One of (dates, statistics, financial, technical, numerical)
-      
+
       Text to analyze:
-      ${text.substring(0, 5000)} // Limiting to 5000 chars for prompt safety
+      ${truncatedText}
     `;
 
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: prompt,
@@ -76,13 +57,12 @@ export async function POST(req: Request) {
       console.error("Failed to parse claims JSON", e);
     }
 
-    // Returning extracted claims (in a real app, we'd trigger a background job to verify them)
-    return NextResponse.json({ 
-      success: true, 
-      reportId: report?.id || "demo-report-id", 
-      claims 
+    return NextResponse.json({
+      success: true,
+      reportId: crypto.randomUUID(),
+      fileName: file.name,
+      claims,
     });
-
   } catch (error) {
     console.error("Error in upload processing:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

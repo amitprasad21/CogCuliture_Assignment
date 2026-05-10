@@ -24,7 +24,6 @@ export default function Home() {
           </Link>
           <nav className="flex items-center gap-4 sm:gap-6">
             <Link href="/" className="text-sm font-medium text-white/90 hover:text-white transition-colors">Dashboard</Link>
-            <Link href="/dashboard/report/1" className="text-sm font-medium text-white/60 hover:text-white transition-colors">Recent History</Link>
             <div className="w-8 h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-xs ml-2 cursor-pointer hover:bg-white/20 transition-colors">
               <User className="w-4 h-4 text-white/80" />
             </div>
