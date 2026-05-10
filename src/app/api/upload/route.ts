@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
+import pdfParse from "pdf-parse";
 
 export const runtime = "nodejs";
 
@@ -35,7 +36,6 @@ export async function POST(req: Request) {
 
     let text: string;
     try {
-      const pdfParse = (await import("pdf-parse")).default;
       const pdfData = await pdfParse(buffer);
       text = pdfData.text;
     } catch (pdfError) {
