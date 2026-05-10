@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
-import pdfParse from "pdf-parse";
 
 export const runtime = "nodejs";
 
@@ -32,44 +31,34 @@ export async function POST(req: Request) {
     }
 
     const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    let text: string;
-    try {
-      const pdfData = await pdfParse(buffer);
-      text = pdfData.text;
-    } catch (pdfError) {
-      console.error("PDF parsing failed:", pdfError);
-      return NextResponse.json(
-        { error: "Failed to parse PDF file. Make sure it is a valid PDF." },
-        { status: 400 }
-      );
-    }
-
-    if (!text || text.trim().length === 0) {
-      return NextResponse.json(
-        { error: "Could not extract text from PDF" },
-        { status: 400 }
-      );
-    }
-
-    const truncatedText = text.substring(0, 5000);
-
-    const prompt = `
-      You are an expert fact-checker. Extract the most important factual claims from the following text.
-      Focus on: dates, statistics, financial claims, technical claims, and numerical statements.
-      Return ONLY a JSON array of objects, where each object has:
-      - "original_text": The exact text of the claim
-      - "category": One of (dates, statistics, financial, technical, numerical)
-
-      Text to analyze:
-      ${truncatedText}
-    `;
+    const base64Data = Buffer.from(arrayBuffer).toString("base64");
 
     const ai = getAI();
+
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: prompt,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              inlineData: {
+                mimeType: "application/pdf",
+                data: base64Data,
+              },
+            },
+            {
+              text: `You are an expert fact-checker. Read this PDF document and extract the most important factual claims.
+Focus on: dates, statistics, financial claims, technical claims, and numerical statements.
+Return ONLY a JSON array of objects, where each object has:
+- "original_text": The exact text of the claim
+- "category": One of (dates, statistics, financial, technical, numerical)
+
+Return ONLY the JSON array, no other text.`,
+            },
+          ],
+        },
+      ],
     });
 
     const responseText = response.text || "[]";
