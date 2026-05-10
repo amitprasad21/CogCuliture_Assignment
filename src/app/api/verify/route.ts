@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { tavily } from "@tavily/core";
 import { GoogleGenAI } from "@google/genai";
 
+export const runtime = "nodejs";
+
 function getAI() {
   return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 }
@@ -12,6 +14,13 @@ function getTavily() {
 
 export async function POST(req: Request) {
   try {
+    if (!process.env.GEMINI_API_KEY || !process.env.TAVILY_API_KEY) {
+      return NextResponse.json(
+        { error: "API keys are not configured on the server" },
+        { status: 500 }
+      );
+    }
+
     const { claimText, category } = await req.json();
 
     if (!claimText) {
@@ -87,10 +96,9 @@ export async function POST(req: Request) {
       ),
     });
   } catch (error) {
-    console.error("Error verifying claim:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    console.error("Verify route error:", error);
+    const message =
+      error instanceof Error ? error.message : "Internal server error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
